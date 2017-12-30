@@ -16,7 +16,7 @@ class IsolationTest(unittest.TestCase):
 
     def setUp(self):
         reload(game_agent)
-        self.player1 = game_agent.MinimaxPlayer()
+        self.player1 = game_agent.AlphaBetaPlayer()
         self.player2 = sample_players.RandomPlayer()
         self.game = isolation.Board(self.player1, self.player2)
 
@@ -70,7 +70,7 @@ class IsolationTest(unittest.TestCase):
         print(self.game.to_string())
         winner, history, outcome = self.game.play()
         print("\nWinner: {}\nOutcome: {}".format(winner, outcome))
-        
+   
         
 if __name__ == '__main__':
     unittest.main()
