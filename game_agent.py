@@ -3,12 +3,14 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 import random
-
+from math import sqrt
 
 class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
     pass
 
+def moves_no(game, p):
+    return len(game.get_legal_moves(p))
 
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -40,14 +42,7 @@ def custom_score(game, player):
     if game.is_winner(player):
         return float('inf')
     
-    score = (len(game.get_legal_moves(player)) - 
-            len(game.get_legal_moves(game.get_opponent(player))))
-#    print('------legal active: ', game.get_legal_moves(game.active_player))
-#    print('------legal inactive: ', game.get_legal_moves(game.inactive_player))
-#    print ('-----utility score: ', score)
-    return score
-
-
+    return 2. * custom_score_2(game, player) + custom_score_3(game, player)
 
 def custom_score_2(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -71,9 +66,16 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
-
+    
+    my_loc = game.get_player_location(player)
+    r = (game.width + game.height)/4
+    dist_ctr = sqrt((my_loc[0] - r)**2 + (my_loc[1] - r)**2)
+    if dist_ctr <= r:
+        score = sqrt(r**2 - dist_ctr**2)
+    else:
+        score = 0.
+    
+    return score
 
 def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -98,7 +100,9 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    score = moves_no(game, player) - 2 * moves_no(game, game.get_opponent(player))
+    
+    return float(score)
 
 
 class IsolationPlayer:
@@ -168,7 +172,9 @@ class MinimaxPlayer(IsolationPlayer):
 
         # Initialize the best move so that this function returns something
         # in case the search fails due to timeout
-        best_move = (-1, -1)
+        
+        best_move = random.sample(game.get_legal_moves(), 1)[0]
+        print('best_move: ', best_move)
 
         try:
             # The try/except block will automatically catch the exception
@@ -301,20 +307,31 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         # Initialize the best move so that this function returns something
         # in case the search fails due to timeout
-        best_move = (-1, -1)
+        try:
+            best_move = game.get_legal_moves()[0]
+        except IndexError:
+            best_move = (-1, -1)
+        print('best_move: ', best_move)
+        
+        depth = 1
 
         try:
             # The try/except block will automatically catch the exception
             # raised when the timer is about to expire.
-            return self.alphabeta(game, self.search_depth)
-
+            for _ in range(1000):
+                if time_left() < self.TIMER_THRESHOLD:
+                    return best_move
+                else:
+                    best_move = self.alphabeta(game, depth)
+                    depth += 1
         except SearchTimeout:
+            print('timeout raised, depth = ', depth)
             pass  # Handle any actions required after timeout as needed
 
         # Return the best move from the last completed search iteration
+        print('best move returned: ', best_move)
+        # print(game.to_string())
         return best_move
-
-        
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -361,9 +378,6 @@ class AlphaBetaPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
-
         def max_value(game, depth, alpha, beta):
             if self.time_left() < self.TIMER_THRESHOLD:
                 raise SearchTimeout()
@@ -380,6 +394,7 @@ class AlphaBetaPlayer(IsolationPlayer):
                                      alpha, beta))
                 if v >= beta: return v
                 alpha = max(alpha, v)
+                
             return v
         
         def min_value(game, depth, alpha, beta):
@@ -398,18 +413,22 @@ class AlphaBetaPlayer(IsolationPlayer):
                                      alpha, beta))
                 if v <= alpha: return v
                 beta = min(beta, v)
+                
             return v
-              
-        try:
-            best_move = max([(min_value(game.forecast_move(move), 
-                                        depth-1, 
-                                        alpha, 
-                                        beta), move)
-                    for move in game.get_legal_moves()])[1]
-    
-        except SearchTimeout:
-            best_move = (-1, -1)
         
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (-1, -1)
+        
+        self.best_current_move = legal_moves[0]
+
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        best_move = max([(min_value(game.forecast_move(move), 
+                                    depth-1, 
+                                    alpha, 
+                                    beta), move)
+                        for move in game.get_legal_moves()])[1]
+
         return best_move
-                
-                
